@@ -1,0 +1,214 @@
+# Experiment Configuration for SOSDN Case Study
+# Based on Beshley et al., JCN 2024 (DOI: 10.23919/JCN.2023.000065)
+
+general:
+  experiment_name: "sosdn_traffic_engineering_evaluation"
+  random_seeds: [42, 101, 2024, 7, 99]
+  output_dir: "results"
+
+topology:
+  num_switches: 16
+  core_switches: ["SW1", "SW2", "SW3", "SW4"]
+  edge_switches_per_core: 3
+  link_bandwidth_mbps: 100.0
+  core_link_delay_ms: 5.0
+  edge_link_delay_ms: 2.0
+  buffer_size_packets: 200
+
+servers:
+  num_servers: 6
+  instances:
+    - id: "IPTV_Server_1"
+      type: "IPTV"
+      switch: "SW1_E1"
+      cpu_capacity_mips: 5000
+      base_cpu_load: 50.0
+      base_ram_load: 30.0
+      base_proc_time_ms: 100.0
+      base_loss_prob: 0.3
+      base_nic_load: 60.0
+    - id: "IPTV_Server_2"
+      type: "IPTV"
+      switch: "SW1_E2"
+      cpu_capacity_mips: 4000
+      base_cpu_load: 75.0
+      base_ram_load: 50.0
+      base_proc_time_ms: 180.0
+      base_loss_prob: 1.2
+      base_nic_load: 85.0
+    - id: "VOIP_Server"
+      type: "VOIP"
+      switch: "SW1_E3"
+      cpu_capacity_mips: 4000
+      base_cpu_load: 40.0
+      base_ram_load: 25.0
+      base_proc_time_ms: 30.0
+      base_loss_prob: 0.1
+      base_nic_load: 35.0
+    - id: "WEB_Server"
+      type: "WEB"
+      switch: "SW4_E1"
+      cpu_capacity_mips: 4000
+      base_cpu_load: 45.0
+      base_ram_load: 35.0
+      base_proc_time_ms: 80.0
+      base_loss_prob: 0.2
+      base_nic_load: 50.0
+    - id: "VOD_Server"
+      type: "VOD"
+      switch: "SW4_E2"
+      cpu_capacity_mips: 4500
+      base_cpu_load: 55.0
+      base_ram_load: 40.0
+      base_proc_time_ms: 120.0
+      base_loss_prob: 0.4
+      base_nic_load: 65.0
+    - id: "Backup_Server"
+      type: "REPLICATED"
+      switch: "SW3_E1"
+      cpu_capacity_mips: 3500
+      base_cpu_load: 60.0
+      base_ram_load: 45.0
+      base_proc_time_ms: 150.0
+      base_loss_prob: 0.5
+      base_nic_load: 55.0
+
+users:
+  total_users: 50
+  distribution:
+    iptv: 20
+    voip: 10
+    web: 10
+    vod: 10
+  iptv_sla_users: 10  # Users 1-10: IPTV users with strict SLA requirement QoE = 5
+  special_target_user: 7  # User 7 highlighted in the paper
+
+services:
+  classes:
+    A:
+      name: "VoIP"
+      loss_limit_percent: 0.25
+      delay_limit_ms: 150.0
+      jitter_limit_ms: 10.0
+      bandwidth_kbps: 64.0
+      importance: [2, 3, 3, 1]  # P, T, J, C from Table II
+      category: 1
+    B:
+      name: "VideoConferencing"
+      loss_limit_percent: 2.0
+      delay_limit_ms: 100.0
+      jitter_limit_ms: 20.0
+      bandwidth_kbps: 2048.0
+      importance: [2, 3, 3, 2]
+      category: 2
+    C:
+      name: "IPTV"
+      loss_limit_percent: 1.0
+      delay_limit_ms: 100.0
+      jitter_limit_ms: 50.0
+      bandwidth_kbps: 4096.0
+      importance: [3, 2, 2, 3]
+      category: 2
+    D:
+      name: "Web"
+      loss_limit_percent: 0.1
+      delay_limit_ms: 100.0
+      jitter_limit_ms: 100.0
+      bandwidth_kbps: 2048.0
+      importance: [3, 1, 1, 1]
+      category: 3
+    E:
+      name: "VoD"
+      loss_limit_percent: 0.1
+      delay_limit_ms: 400.0
+      jitter_limit_ms: 30.0
+      bandwidth_kbps: 2048.0
+      importance: [2, 2, 1, 1]
+      category: 3
+    F:
+      name: "NonRealTimeVideo720p"
+      loss_limit_percent: 1.0
+      delay_limit_ms: 400.0
+      jitter_limit_ms: 500.0
+      bandwidth_kbps: 6000.0
+      importance: [2, 1, 1, 3]
+      category: 3
+
+prioritization:
+  parameter_weights:
+    loss: 0.23
+    delay: 0.18
+    jitter: 0.14
+    bandwidth: 0.12
+
+server_selection:
+  criteria_weights:
+    cpu: 0.3
+    ram: 0.2
+    proc_time: 0.2
+    loss_prob: 0.2
+    nic_load: 0.1
+
+routing:
+  base_weights:
+    loss: 0.25
+    delay: 0.25
+    bandwidth: 0.25
+    jitter: 0.25
+  adaptive_weights_by_category:
+    category_1:  # Delay/Jitter sensitive (VoIP)
+      loss: 0.15
+      delay: 0.40
+      bandwidth: 0.10
+      jitter: 0.35
+    category_2:  # Loss sensitive (IPTV)
+      loss: 0.40
+      delay: 0.25
+      bandwidth: 0.15
+      jitter: 0.20
+    category_3:  # Best effort / load balancing
+      loss: 0.20
+      delay: 0.20
+      bandwidth: 0.40
+      jitter: 0.20
+
+scenarios:
+  low_congestion:
+    label: "Low Congestion"
+    background_traffic_mbps: 15.0
+    user_rate_multiplier: 0.7
+  medium_congestion:
+    label: "Medium Congestion"
+    background_traffic_mbps: 45.0
+    user_rate_multiplier: 1.0
+  high_congestion:
+    label: "High Congestion / Overload"
+    background_traffic_mbps: 60.0
+    user_rate_multiplier: 1.4
+    bottleneck_links: [["SW4", "SW1"], ["SW1", "SW4"]]
+
+methods:
+  - id: "fifo_ospf"
+    name: "FIFO + OSPF"
+    routing: "ospf"
+    queue: "fifo"
+    adaptive_priority: false
+    server_selection: "static"
+  - id: "pq_ospf"
+    name: "PQ + OSPF"
+    routing: "ospf"
+    queue: "pq"
+    adaptive_priority: false
+    server_selection: "static"
+  - id: "prioritization_ospf"
+    name: "Adaptive Prioritization + OSPF"
+    routing: "ospf"
+    queue: "adaptive_pq"
+    adaptive_priority: true
+    server_selection: "static"
+  - id: "proposed_combined"
+    name: "Proposed Combined (SOSDN)"
+    routing: "multi_criteria"
+    queue: "adaptive_pq"
+    adaptive_priority: true
+    server_selection: "optimal"
